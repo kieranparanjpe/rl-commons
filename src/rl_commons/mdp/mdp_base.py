@@ -23,6 +23,14 @@ class Mdp(ABC):
 
     @property
     @abstractmethod
+    def action_range(self) -> torch.Tensor:
+        """Returns a tensor of shape:
+        Continuous: [action_dimension, 2], with a min and max for each action.
+        Discrete: [action_dimension]"""
+        pass
+
+    @property
+    @abstractmethod
     def discrete(self) -> bool:
         """Returns whether the actions are continuous or discrete."""
         pass

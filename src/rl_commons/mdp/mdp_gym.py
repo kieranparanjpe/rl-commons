@@ -54,6 +54,16 @@ class MdpGym(Mdp):
         return self._norm_obs_wrapper.obs_rms.mean, self._norm_obs_wrapper.obs_rms.var
 
     @property
+    def action_range(self) -> torch.Tensor:
+        if self.discrete:
+            return torch.zeros(self.action_dimension, device=self.device)
+
+        return torch.stack([
+            torch.tensor(min_actions, device=self.device),
+            torch.tensor(max_actions, device=self.device)
+        ], dim=1)
+
+    @property
     def obs_dimension(self) -> int:
         return self._env.observation_space.shape[0]
 
