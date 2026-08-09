@@ -1,2 +1,2 @@
-from .run_info import RunInfo
-from .loader import ConfigLoader
+from ml_commons.config import RunInfo, ConfigLoader
+from .run_info import RLRunInfo

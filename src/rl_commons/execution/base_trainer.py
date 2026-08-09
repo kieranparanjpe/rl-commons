@@ -1,41 +1,44 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
-import torch
-
-from rl_commons.config.run_info import RunInfo
-from rl_commons.log import WandBLogger, NullLogger, Recorder, NullRecorder
+from ml_commons.config.run_info import RunInfo
+from ml_commons.log import Logger
+from ml_commons.execution.base_trainer import BaseTrainer as MLBaseTrainer
+from rl_commons.config.run_info import RLRunInfo
+from rl_commons.log import Recorder, NullRecorder, WandBRecordableLogger, NullRecordableLogger
 from rl_commons.mdp import MdpGym, MdpConfig
 
 
-class BaseTrainer(ABC):
+class BaseTrainer(MLBaseTrainer, ABC):
 
-    def __init__(self, run_info: RunInfo, run_config: Any, mdp_config: MdpConfig,
+    def __init__(self, run_info: RLRunInfo, run_config: Any, mdp_config: MdpConfig,
                  entity: str, project: str, log_elements: dict,
                  logging: bool = True, record: bool = False,
                  total_timesteps: int | None = None):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._run_info = run_info
-        self._run_config = run_config
-
-        print(f"\nRun: {self._run_info.run_name()}")
-        print(f"Config: {self._run_config!r}")
-
-        self._logger = WandBLogger(run_info, entity, project,
-                                   hyperparameters=vars(run_config),
-                                   elements=log_elements) \
-                       if logging else NullLogger()
+        super().__init__(
+            run_info=run_info,
+            run_config=run_config,
+            entity=entity,
+            project=project,
+            log_elements=log_elements,
+            logging=logging,
+        )
 
         self._recorder = Recorder(
             run_info.local_folder_path("saved_videos"), 5, total_timesteps
         ) if (record and total_timesteps is not None) else NullRecorder()
 
-        self._mdp = MdpGym(run_info.environment_id, self.device,
+        self._mdp = MdpGym(run_info.task_id, self.device,
                            recorder=self._recorder, mdp_config=mdp_config)
 
-    @abstractmethod
-    def run(self):
-        """Execute the main training loop."""
-        pass
+    def _create_logger(self, run_info: RunInfo, entity: str, project: str,
+                       hyperparameters: dict, elements: dict,
+                       logging: bool) -> Logger:
+        """Override to use recordable logger variants that support video upload."""
+        if logging:
+            return WandBRecordableLogger(run_info, entity, project,
+                                         hyperparameters=hyperparameters,
+                                         elements=elements)
+        return NullRecordableLogger()

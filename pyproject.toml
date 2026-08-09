@@ -4,11 +4,10 @@ version = "0.1.0"
 description = "Shared utilities for RL and world model projects"
 requires-python = ">=3.12"
 dependencies = [
+    "ml-commons @ git+https://github.com/kieranparanjpe/ml-commons.git",
     "torch>=2.0",
     "numpy>=2.0",
     "gymnasium[box2d,mujoco]>=1.0",
-    "wandb>=0.27",
-    "pydantic>=2.0",
     "gym-pusht>=0.1",
     "pymunk<7",
 ]
