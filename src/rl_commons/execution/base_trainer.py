@@ -6,14 +6,13 @@ from typing import Any
 from ml_commons.config.run_info import RunInfo
 from ml_commons.log import Logger
 from ml_commons.execution.base_trainer import BaseTrainer as MLBaseTrainer
-from rl_commons.config.run_info import RLRunInfo
 from rl_commons.log import Recorder, NullRecorder, WandBRecordableLogger, NullRecordableLogger
 from rl_commons.mdp import MdpGym, MdpConfig
 
 
 class BaseTrainer(MLBaseTrainer, ABC):
 
-    def __init__(self, run_info: RLRunInfo, run_config: Any, mdp_config: MdpConfig,
+    def __init__(self, run_info: RunInfo, run_config: Any, mdp_config: MdpConfig,
                  entity: str, project: str, log_elements: dict,
                  logging: bool = True, record: bool = False,
                  total_timesteps: int | None = None):
