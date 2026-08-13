@@ -20,8 +20,8 @@ class PolicyFactory:
         return cls._registry[policy_id](obs_dimension, action_dimension, config)
 
     @classmethod
-    def load_policy(cls, policy_id: str, path: str,
-                    obs_dimension: Optional[int] = None, action_dimension: Optional[int] = None) -> Policy:
+    def load_policy(cls, policy_id: str, path: str, obs_dimension: Optional[int] = None,
+                    action_dimension: Optional[int] = None) -> tuple[Policy, Optional[dict]]:
         checkpoint = Policy.load_checkpoint(path)
 
         obs_dim = obs_dimension if obs_dimension is not None else checkpoint.get("input_size")
@@ -34,4 +34,4 @@ class PolicyFactory:
             policy.load_state_dict(policy_state_dict)
         policy.eval()
 
-        return policy
+        return policy, checkpoint.get("norm_stats")
