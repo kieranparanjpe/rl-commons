@@ -74,9 +74,9 @@ class MdpGym(Mdp):
     @property
     def action_dimension(self) -> int:
         if self.discrete:
-            return self._env.action_space.n
+            return int(self._env.action_space.n)
         else:
-            return self._env.action_space.shape[0]
+            return int(self._env.action_space.shape[0])
 
     def reset(self) -> torch.Tensor:
         obs, _ = self._env.reset()
