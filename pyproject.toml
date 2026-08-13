@@ -2,7 +2,7 @@
 name = "rl-commons"
 version = "0.1.0"
 description = "Shared utilities for RL and world model projects"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
     "ml-commons",
     "torch>=2.0",

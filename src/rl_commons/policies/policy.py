@@ -21,3 +21,18 @@ class Policy(ABC, torch.nn.Module):
 
     def entropy(self, distribution : torch.distributions.Distribution) -> torch.Tensor:
         return distribution.entropy().sum(-1)
+
+    def save(self, path, config=None, norm_stats=None):
+        save_dict = {
+            "policy": self.state_dict(),
+            "config": config,
+            "input_size": self.input_size,
+            "number_actions": self._number_actions,
+        }
+        if norm_stats is not None:
+            save_dict["norm_stats"] = norm_stats
+        torch.save(save_dict, path)
+
+    @staticmethod
+    def load_checkpoint(path, map_location="cpu"):
+        return torch.load(path, map_location=map_location, weights_only=True) if path else {}
