@@ -59,8 +59,8 @@ class MdpGym(Mdp):
             return torch.zeros(self.action_dimension, device=self.device)
 
         return torch.stack([
-            torch.tensor(min_actions, device=self.device),
-            torch.tensor(max_actions, device=self.device)
+            torch.tensor(self._env.action_space.low, device=self.device),
+            torch.tensor(self._env.action_space.high, device=self.device)
         ], dim=1)
 
     @property

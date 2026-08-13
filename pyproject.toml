@@ -24,3 +24,9 @@ packages = ["src/rl_commons"]
 
 [tool.uv.sources]
 ml-commons = { git = "https://github.com/kieranparanjpe/ml-commons.git" }
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
