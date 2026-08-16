@@ -5,7 +5,7 @@ import pytest
 import wandb
 
 from rl_commons.config.run_info import RLRunInfo
-from rl_commons.policies.policy_factory import PolicyFactory
+from rl_commons.policies.policy import Policy
 
 
 @pytest.fixture
@@ -29,10 +29,10 @@ def mock_wandb(monkeypatch):
 
 @pytest.fixture
 def isolated_policy_registry():
-    """PolicyFactory._registry is shared class state — snapshot/restore around
+    """Policy._registry is shared class state — snapshot/restore around
     tests that register/mutate it so they can't leak into each other."""
-    original = dict(PolicyFactory._registry)
-    PolicyFactory._registry.clear()
+    original = dict(Policy._registry)
+    Policy._registry.clear()
     yield
-    PolicyFactory._registry.clear()
-    PolicyFactory._registry.update(original)
+    Policy._registry.clear()
+    Policy._registry.update(original)

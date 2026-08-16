@@ -3,7 +3,6 @@ import torch
 import pytest
 
 from rl_commons.policies.policy import Policy
-from rl_commons.policies.policy_factory import PolicyFactory
 
 
 class _DummyPolicy(Policy):
@@ -28,9 +27,9 @@ def _use_isolated_registry(isolated_policy_registry):
 
 
 def test_register_and_build_policy():
-    PolicyFactory.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
-    policy = PolicyFactory.build_policy("dummy", 4, 2, config={"a": 1})
+    policy = Policy.build_policy("dummy", 4, 2, config={"a": 1})
 
     assert isinstance(policy, _DummyPolicy)
     assert policy.input_size == 4
@@ -40,17 +39,17 @@ def test_register_and_build_policy():
 
 def test_build_policy_unknown_id_raises():
     with pytest.raises(ValueError):
-        PolicyFactory.build_policy("nonexistent", 4, 2)
+        Policy.build_policy("nonexistent", 4, 2)
 
 
-def test_load_policy_roundtrip(tmp_path):
-    PolicyFactory.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+def test_load_by_policy_id_roundtrip(tmp_path):
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2, config={"a": 1})
     path = tmp_path / "policy.pth"
-    original.save(str(path), config={"a": 1})
+    original.save(str(path))
 
-    loaded, norm_stats = PolicyFactory.load_policy("dummy", str(path))
+    loaded, norm_stats = Policy.load(str(path), policy_id="dummy")
 
     assert isinstance(loaded, _DummyPolicy)
     assert loaded.input_size == 4
@@ -61,40 +60,40 @@ def test_load_policy_roundtrip(tmp_path):
     assert norm_stats is None
 
 
-def test_load_policy_returns_saved_norm_stats(tmp_path):
-    PolicyFactory.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+def test_load_by_policy_id_returns_saved_norm_stats(tmp_path):
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
     original.save(str(path), norm_stats={"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)})
 
-    _, norm_stats = PolicyFactory.load_policy("dummy", str(path))
+    _, norm_stats = Policy.load(str(path), policy_id="dummy")
 
     assert torch.equal(norm_stats["obs_mean"], torch.zeros(4))
     assert torch.equal(norm_stats["obs_var"], torch.ones(4))
 
 
-def test_load_policy_dimension_override_takes_priority_over_checkpoint(tmp_path):
-    PolicyFactory.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+def test_load_dimension_override_takes_priority_over_checkpoint(tmp_path):
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
     original.save(str(path))
 
-    loaded, _ = PolicyFactory.load_policy("dummy", str(path), obs_dimension=8, action_dimension=3)
+    loaded, _ = Policy.load(str(path), policy_id="dummy", obs_dimension=8, action_dimension=3)
 
     assert loaded.input_size == 8
     assert loaded._number_actions == 3
 
 
-def test_load_policy_falls_back_to_checkpoint_dims_when_not_passed(tmp_path):
-    PolicyFactory.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+def test_load_falls_back_to_checkpoint_dims_when_not_passed(tmp_path):
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
     original.save(str(path))
 
-    loaded, _ = PolicyFactory.load_policy("dummy", str(path))
+    loaded, _ = Policy.load(str(path), policy_id="dummy")
 
     assert loaded.input_size == 4
     assert loaded._number_actions == 2
