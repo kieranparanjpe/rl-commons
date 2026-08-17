@@ -8,21 +8,21 @@ from ml_commons.networks import SaveableNetwork
 from ml_commons.stats import NormalisationStats
 
 
-def _migrate_obs_norm_stats(checkpoint: dict) -> Optional[NormalisationStats]:
+def _migrate_obs_norm_stats(checkpoint: dict) -> NormalisationStats:
     """Back-compat: pre-classmethod checkpoints stored norm_stats as a raw
     {"obs_mean": Tensor, "obs_var": Tensor} dict under "norm_stats" (My_RL_Impl commit dafe693)."""
     if "obs_norm_stats" in checkpoint:
         return checkpoint["obs_norm_stats"]
     legacy = checkpoint.get("norm_stats")
     if legacy is None:
-        return None
+        return NormalisationStats()
     return NormalisationStats(mean=legacy["obs_mean"].numpy(), var=legacy["obs_var"].numpy())
 
 
 class Policy(SaveableNetwork, torch.nn.Module):
 
     config: Any
-    obs_norm_stats: Optional[NormalisationStats]
+    obs_norm_stats: NormalisationStats
 
     _registry: dict[str, Callable[[int, int, Any], Policy]] = {}
 
@@ -30,7 +30,7 @@ class Policy(SaveableNetwork, torch.nn.Module):
         super().__init__()
         self.input_size = input_size
         self._number_actions = number_actions
-        self.obs_norm_stats = None
+        self.obs_norm_stats = NormalisationStats()
 
     @abstractmethod
     def forward(self, observation : torch.Tensor) -> torch.distributions.Distribution:
@@ -52,9 +52,8 @@ class Policy(SaveableNetwork, torch.nn.Module):
             "config": self.config,
             "input_size": self.input_size,
             "number_actions": self._number_actions,
+            "obs_norm_stats": self.obs_norm_stats,
         }
-        if self.obs_norm_stats is not None:
-            save_dict["obs_norm_stats"] = self.obs_norm_stats
         torch.save(save_dict, path)
 
     @classmethod

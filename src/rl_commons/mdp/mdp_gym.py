@@ -55,9 +55,9 @@ class MdpGym(Mdp):
         self._norm_obs_wrapper.update_running_mean = False
 
     @property
-    def obs_rms_stats(self) -> NormalisationStats | None:
+    def obs_rms_stats(self) -> NormalisationStats:
         if self._norm_obs_wrapper is None:
-            return None
+            return NormalisationStats()
         return NormalisationStats(mean=self._norm_obs_wrapper.obs_rms.mean, var=self._norm_obs_wrapper.obs_rms.var)
 
     @property

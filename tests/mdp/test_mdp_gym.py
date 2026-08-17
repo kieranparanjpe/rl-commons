@@ -50,7 +50,6 @@ def test_normalise_obs_enabled_exposes_running_stats():
         mdp.step(torch.tensor(0))
 
         stats = mdp.obs_rms_stats
-        assert stats is not None
         assert stats.mean.shape == (4,)
         assert stats.var.shape == (4,)
     finally:
@@ -60,7 +59,8 @@ def test_normalise_obs_enabled_exposes_running_stats():
 def test_normalise_obs_disabled_has_no_running_stats():
     mdp = MdpGym("CartPole-v1", mdp_config=MdpConfig(normalise_obs=False, normalise_reward=False))
     try:
-        assert mdp.obs_rms_stats is None
+        assert np.array_equal(mdp.obs_rms_stats.mean, 0.0)
+        assert np.array_equal(mdp.obs_rms_stats.var, 1.0)
     finally:
         mdp.close()
 

@@ -53,11 +53,12 @@ def test_save_and_load_checkpoint_roundtrip(tmp_path):
     assert set(checkpoint["policy"].keys()) == {"linear.weight", "linear.bias"}
 
 
-def test_save_without_norm_stats_omits_key(tmp_path):
+def test_save_without_setting_norm_stats_saves_identity(tmp_path):
     policy = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
 
     policy.save(str(path))
 
     checkpoint = torch.load(str(path), weights_only=True)
-    assert "obs_norm_stats" not in checkpoint
+    assert np.array_equal(checkpoint["obs_norm_stats"].mean, 0.0)
+    assert np.array_equal(checkpoint["obs_norm_stats"].var, 1.0)

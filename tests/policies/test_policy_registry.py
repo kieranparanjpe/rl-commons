@@ -59,7 +59,8 @@ def test_load_by_policy_id_roundtrip(tmp_path):
     assert loaded.config == {"a": 1}
     assert not loaded.training
     assert torch.equal(loaded.dummy_param, original.dummy_param)
-    assert loaded.obs_norm_stats is None
+    assert np.array_equal(loaded.obs_norm_stats.mean, 0.0)
+    assert np.array_equal(loaded.obs_norm_stats.var, 1.0)
 
 
 def test_load_by_policy_id_returns_saved_norm_stats(tmp_path):
