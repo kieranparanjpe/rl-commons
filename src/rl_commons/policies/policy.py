@@ -5,6 +5,7 @@ from typing import Any, Callable, Optional
 
 import torch
 from ml_commons.networks import SaveableNetwork
+import ml_commons.stats  # noqa: F401 — registers NormalisationStats/numpy as safe globals for torch.load
 
 class Policy(SaveableNetwork, torch.nn.Module):
 
@@ -55,7 +56,7 @@ class Policy(SaveableNetwork, torch.nn.Module):
 
     @classmethod
     def load(cls, path, map_location="cpu", obs_dimension: Optional[int] = None,
-              action_dimension: Optional[int] = None, *, policy_id: str):
+              action_dimension: Optional[int] = None, *, policy_id: str, **kwargs):
         checkpoint = torch.load(path, map_location=map_location, weights_only=True) if path else {}
 
         obs_dim = obs_dimension if obs_dimension is not None else checkpoint["input_size"]

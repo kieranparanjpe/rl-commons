@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from ml_commons.stats import NormalisationStats
 
 from rl_commons.mdp.mdp_config import MdpConfig
 from rl_commons.mdp.mdp_gym import MdpGym
@@ -50,9 +51,8 @@ def test_normalise_obs_enabled_exposes_running_stats():
 
         stats = mdp.obs_rms_stats
         assert stats is not None
-        mean, var = stats
-        assert mean.shape == (4,)
-        assert var.shape == (4,)
+        assert stats.mean.shape == (4,)
+        assert stats.var.shape == (4,)
     finally:
         mdp.close()
 
@@ -71,13 +71,13 @@ def test_injected_obs_rms_stats_are_preserved_not_recomputed():
 
     mdp = MdpGym("CartPole-v1",
                 mdp_config=MdpConfig(normalise_obs=True, normalise_reward=False),
-                obs_rms_stats=(fixed_mean, fixed_var))
+                obs_rms_stats=NormalisationStats(mean=fixed_mean, var=fixed_var))
     try:
         mdp.reset()
         mdp.step(torch.tensor(0))
 
-        mean, var = mdp.obs_rms_stats
-        assert np.array_equal(mean, fixed_mean)
-        assert np.array_equal(var, fixed_var)
+        stats = mdp.obs_rms_stats
+        assert np.array_equal(stats.mean, fixed_mean)
+        assert np.array_equal(stats.var, fixed_var)
     finally:
         mdp.close()

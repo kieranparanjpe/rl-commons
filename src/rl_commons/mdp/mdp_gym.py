@@ -1,8 +1,8 @@
 from typing import cast
 
-import numpy as np
 import torch
 import gymnasium as gym
+from ml_commons.stats import NormalisationStats
 from . import envs  # noqa: F401 — registers custom environments with gymnasium
 
 from rl_commons.log import BaseRecorder, NullRecorder
@@ -16,7 +16,7 @@ class MdpGym(Mdp):
     def __init__(self, environment_id: str, device: torch.device = torch.device('cpu'), render_mode=None,
                  recorder: BaseRecorder = NullRecorder(),
                  mdp_config: MdpConfig = MdpConfig(),
-                 obs_rms_stats: tuple[np.ndarray, np.ndarray] | None = None):
+                 obs_rms_stats: NormalisationStats | None = None):
         super().__init__(device)
 
         self._norm_obs_wrapper: gym.wrappers.NormalizeObservation | None = None
@@ -27,9 +27,8 @@ class MdpGym(Mdp):
             self._env = gym.wrappers.NormalizeObservation(self._env)
             self._norm_obs_wrapper = self._env
             if obs_rms_stats is not None:
-                mean, var = obs_rms_stats
-                self._norm_obs_wrapper.obs_rms.mean = mean
-                self._norm_obs_wrapper.obs_rms.var = var
+                self._norm_obs_wrapper.obs_rms.mean = obs_rms_stats.mean
+                self._norm_obs_wrapper.obs_rms.var = obs_rms_stats.var
                 self._norm_obs_wrapper.update_running_mean = False
 
         if mdp_config.normalise_reward:
@@ -48,10 +47,10 @@ class MdpGym(Mdp):
             return gym.make(environment_id, render_mode=render_mode, **mdp_config.make_kwargs)
 
     @property
-    def obs_rms_stats(self) -> tuple[np.ndarray, np.ndarray] | None:
+    def obs_rms_stats(self) -> NormalisationStats | None:
         if self._norm_obs_wrapper is None:
             return None
-        return self._norm_obs_wrapper.obs_rms.mean, self._norm_obs_wrapper.obs_rms.var
+        return NormalisationStats(mean=self._norm_obs_wrapper.obs_rms.mean, var=self._norm_obs_wrapper.obs_rms.var)
 
     @property
     def action_range(self) -> torch.Tensor:
