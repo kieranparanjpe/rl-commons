@@ -1,7 +1,9 @@
+import numpy as np
 import torch
 
 import pytest
 
+from ml_commons.stats import NormalisationStats
 from rl_commons.policies.policy import Policy
 
 
@@ -65,12 +67,50 @@ def test_load_by_policy_id_returns_saved_norm_stats(tmp_path):
 
     original = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
+    original.save(str(path), norm_stats=NormalisationStats(mean=np.zeros(4), var=np.ones(4)))
+
+    _, norm_stats = Policy.load(str(path), policy_id="dummy")
+
+    assert np.array_equal(norm_stats.mean, np.zeros(4))
+    assert np.array_equal(norm_stats.var, np.ones(4))
+
+
+def test_load_migrates_legacy_norm_stats_dict(tmp_path):
+    """Checkpoints saved before NormalisationStats existed stored norm_stats as a raw
+    {"obs_mean": Tensor, "obs_var": Tensor} dict (see My_RL_Impl commit dafe693)."""
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+
+    original = _DummyPolicy(4, 2)
+    path = tmp_path / "policy.pth"
     original.save(str(path), norm_stats={"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)})
 
     _, norm_stats = Policy.load(str(path), policy_id="dummy")
 
-    assert torch.equal(norm_stats["obs_mean"], torch.zeros(4))
-    assert torch.equal(norm_stats["obs_var"], torch.ones(4))
+    assert isinstance(norm_stats, NormalisationStats)
+    assert np.array_equal(norm_stats.mean, np.zeros(4))
+    assert np.array_equal(norm_stats.var, np.ones(4))
+
+
+def test_load_legacy_checkpoint_with_only_weights_and_norm_stats(tmp_path):
+    """Pre-classmethod checkpoints (My_RL_Impl commit dafe693..dcf3639) only ever
+    saved {"policy": state_dict, "norm_stats": {...}} -- no config/input_size/number_actions.
+    Loading these requires the caller to pass obs_dimension/action_dimension explicitly."""
+    Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
+
+    original = _DummyPolicy(4, 2)
+    path = tmp_path / "policy.pth"
+    torch.save({
+        "policy": original.state_dict(),
+        "norm_stats": {"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)},
+    }, str(path))
+
+    loaded, norm_stats = Policy.load(str(path), policy_id="dummy", obs_dimension=4, action_dimension=2)
+
+    assert isinstance(loaded, _DummyPolicy)
+    assert torch.equal(loaded.dummy_param, original.dummy_param)
+    assert isinstance(norm_stats, NormalisationStats)
+    assert np.array_equal(norm_stats.mean, np.zeros(4))
+    assert np.array_equal(norm_stats.var, np.ones(4))
 
 
 def test_load_dimension_override_takes_priority_over_checkpoint(tmp_path):

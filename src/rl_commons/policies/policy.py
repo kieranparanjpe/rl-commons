@@ -5,7 +5,15 @@ from typing import Any, Callable, Optional
 
 import torch
 from ml_commons.networks import SaveableNetwork
-import ml_commons.stats  # noqa: F401 — registers NormalisationStats/numpy as safe globals for torch.load
+from ml_commons.stats import NormalisationStats
+
+
+def _migrate_norm_stats(raw) -> Optional[NormalisationStats]:
+    """Back-compat: old checkpoints stored norm_stats as {"obs_mean": Tensor, "obs_var": Tensor}."""
+    if raw is None or isinstance(raw, NormalisationStats):
+        return raw
+    return NormalisationStats(mean=raw["obs_mean"].numpy(), var=raw["obs_var"].numpy())
+
 
 class Policy(SaveableNetwork, torch.nn.Module):
 
@@ -68,4 +76,4 @@ class Policy(SaveableNetwork, torch.nn.Module):
         policy.load_state_dict(policy_state_dict)
         policy.eval()
 
-        return policy, checkpoint.get("norm_stats")
+        return policy, _migrate_norm_stats(checkpoint.get("norm_stats"))

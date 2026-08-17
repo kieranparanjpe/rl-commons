@@ -27,9 +27,7 @@ class MdpGym(Mdp):
             self._env = gym.wrappers.NormalizeObservation(self._env)
             self._norm_obs_wrapper = self._env
             if obs_rms_stats is not None:
-                self._norm_obs_wrapper.obs_rms.mean = obs_rms_stats.mean
-                self._norm_obs_wrapper.obs_rms.var = obs_rms_stats.var
-                self._norm_obs_wrapper.update_running_mean = False
+                self.enable_obs_normalization(obs_rms_stats)
 
         if mdp_config.normalise_reward:
             self._env = gym.wrappers.NormalizeReward(self._env, gamma=mdp_config.reward_norm_gamma)
@@ -45,6 +43,16 @@ class MdpGym(Mdp):
             )
         else:
             return gym.make(environment_id, render_mode=render_mode, **mdp_config.make_kwargs)
+
+    def enable_obs_normalization(self, obs_rms_stats: NormalisationStats) -> None:
+        """Wrap (or re-freeze) obs normalization on the already-constructed env, e.g. once a
+        checkpoint's norm_stats become known after this MdpGym was built without them."""
+        if self._norm_obs_wrapper is None:
+            self._env = gym.wrappers.NormalizeObservation(self._env)
+            self._norm_obs_wrapper = self._env
+        self._norm_obs_wrapper.obs_rms.mean = obs_rms_stats.mean
+        self._norm_obs_wrapper.obs_rms.var = obs_rms_stats.var
+        self._norm_obs_wrapper.update_running_mean = False
 
     @property
     def obs_rms_stats(self) -> NormalisationStats | None:
