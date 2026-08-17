@@ -6,16 +6,17 @@ from abc import ABC, abstractmethod
 
 import torch
 
+from rl_commons.log import BaseRecorder, NullRecorder
 from rl_commons.mdp import MdpGym, MdpConfig
 
 
 class BaseEvaluator(ABC):
 
-    def __init__(self, task_id: str, mdp_config: MdpConfig = MdpConfig(), **mdp_kwargs):
+    def __init__(self, task_id: str, mdp_config: MdpConfig = MdpConfig(), recorder: BaseRecorder = NullRecorder()):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._stop = threading.Event()
         self._mdp = MdpGym(task_id, self.device,
-                           render_mode='human', mdp_config=mdp_config, **mdp_kwargs)
+                           render_mode='human', mdp_config=mdp_config, recorder=recorder)
 
     @staticmethod
     def load_checkpoint(path: str) -> dict:
