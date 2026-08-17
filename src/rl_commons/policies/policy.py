@@ -8,16 +8,21 @@ from ml_commons.networks import SaveableNetwork
 from ml_commons.stats import NormalisationStats
 
 
-def _migrate_norm_stats(raw) -> Optional[NormalisationStats]:
-    """Back-compat: old checkpoints stored norm_stats as {"obs_mean": Tensor, "obs_var": Tensor}."""
-    if raw is None or isinstance(raw, NormalisationStats):
-        return raw
-    return NormalisationStats(mean=raw["obs_mean"].numpy(), var=raw["obs_var"].numpy())
+def _migrate_obs_norm_stats(checkpoint: dict) -> Optional[NormalisationStats]:
+    """Back-compat: pre-classmethod checkpoints stored norm_stats as a raw
+    {"obs_mean": Tensor, "obs_var": Tensor} dict under "norm_stats" (My_RL_Impl commit dafe693)."""
+    if "obs_norm_stats" in checkpoint:
+        return checkpoint["obs_norm_stats"]
+    legacy = checkpoint.get("norm_stats")
+    if legacy is None:
+        return None
+    return NormalisationStats(mean=legacy["obs_mean"].numpy(), var=legacy["obs_var"].numpy())
 
 
 class Policy(SaveableNetwork, torch.nn.Module):
 
     config: Any
+    obs_norm_stats: Optional[NormalisationStats]
 
     _registry: dict[str, Callable[[int, int, Any], Policy]] = {}
 
@@ -25,6 +30,7 @@ class Policy(SaveableNetwork, torch.nn.Module):
         super().__init__()
         self.input_size = input_size
         self._number_actions = number_actions
+        self.obs_norm_stats = None
 
     @abstractmethod
     def forward(self, observation : torch.Tensor) -> torch.distributions.Distribution:
@@ -40,15 +46,15 @@ class Policy(SaveableNetwork, torch.nn.Module):
     def entropy(self, distribution : torch.distributions.Distribution) -> torch.Tensor:
         return distribution.entropy().sum(-1)
 
-    def save(self, path, norm_stats=None) -> None:
+    def save(self, path) -> None:
         save_dict = {
             "policy": self.state_dict(),
             "config": self.config,
             "input_size": self.input_size,
             "number_actions": self._number_actions,
         }
-        if norm_stats is not None:
-            save_dict["norm_stats"] = norm_stats
+        if self.obs_norm_stats is not None:
+            save_dict["obs_norm_stats"] = self.obs_norm_stats
         torch.save(save_dict, path)
 
     @classmethod
@@ -64,7 +70,7 @@ class Policy(SaveableNetwork, torch.nn.Module):
 
     @classmethod
     def load(cls, path, map_location="cpu", obs_dimension: Optional[int] = None,
-              action_dimension: Optional[int] = None, *, policy_id: str, **kwargs):
+              action_dimension: Optional[int] = None, *, policy_id: str, **kwargs) -> Policy:
         checkpoint = torch.load(path, map_location=map_location, weights_only=True) if path else {}
 
         obs_dim = obs_dimension if obs_dimension is not None else checkpoint["input_size"]
@@ -74,6 +80,7 @@ class Policy(SaveableNetwork, torch.nn.Module):
 
         policy_state_dict = checkpoint["policy"]
         policy.load_state_dict(policy_state_dict)
+        policy.obs_norm_stats = _migrate_obs_norm_stats(checkpoint)
         policy.eval()
 
-        return policy, _migrate_norm_stats(checkpoint.get("norm_stats"))
+        return policy

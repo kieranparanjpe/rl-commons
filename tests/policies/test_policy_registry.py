@@ -51,7 +51,7 @@ def test_load_by_policy_id_roundtrip(tmp_path):
     path = tmp_path / "policy.pth"
     original.save(str(path))
 
-    loaded, norm_stats = Policy.load(str(path), policy_id="dummy")
+    loaded = Policy.load(str(path), policy_id="dummy")
 
     assert isinstance(loaded, _DummyPolicy)
     assert loaded.input_size == 4
@@ -59,36 +59,44 @@ def test_load_by_policy_id_roundtrip(tmp_path):
     assert loaded.config == {"a": 1}
     assert not loaded.training
     assert torch.equal(loaded.dummy_param, original.dummy_param)
-    assert norm_stats is None
+    assert loaded.obs_norm_stats is None
 
 
 def test_load_by_policy_id_returns_saved_norm_stats(tmp_path):
     Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2)
+    original.obs_norm_stats = NormalisationStats(mean=np.zeros(4), var=np.ones(4))
     path = tmp_path / "policy.pth"
-    original.save(str(path), norm_stats=NormalisationStats(mean=np.zeros(4), var=np.ones(4)))
+    original.save(str(path))
 
-    _, norm_stats = Policy.load(str(path), policy_id="dummy")
+    loaded = Policy.load(str(path), policy_id="dummy")
 
-    assert np.array_equal(norm_stats.mean, np.zeros(4))
-    assert np.array_equal(norm_stats.var, np.ones(4))
+    assert np.array_equal(loaded.obs_norm_stats.mean, np.zeros(4))
+    assert np.array_equal(loaded.obs_norm_stats.var, np.ones(4))
 
 
 def test_load_migrates_legacy_norm_stats_dict(tmp_path):
-    """Checkpoints saved before NormalisationStats existed stored norm_stats as a raw
-    {"obs_mean": Tensor, "obs_var": Tensor} dict (see My_RL_Impl commit dafe693)."""
+    """Checkpoints saved after config/input_size/number_actions existed but before
+    NormalisationStats existed stored norm_stats as a raw {"obs_mean": Tensor, "obs_var": Tensor}
+    dict under the "norm_stats" key."""
     Policy.register("dummy", lambda obs, act, cfg: _DummyPolicy(obs, act, cfg))
 
     original = _DummyPolicy(4, 2)
     path = tmp_path / "policy.pth"
-    original.save(str(path), norm_stats={"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)})
+    torch.save({
+        "policy": original.state_dict(),
+        "config": None,
+        "input_size": 4,
+        "number_actions": 2,
+        "norm_stats": {"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)},
+    }, str(path))
 
-    _, norm_stats = Policy.load(str(path), policy_id="dummy")
+    loaded = Policy.load(str(path), policy_id="dummy")
 
-    assert isinstance(norm_stats, NormalisationStats)
-    assert np.array_equal(norm_stats.mean, np.zeros(4))
-    assert np.array_equal(norm_stats.var, np.ones(4))
+    assert isinstance(loaded.obs_norm_stats, NormalisationStats)
+    assert np.array_equal(loaded.obs_norm_stats.mean, np.zeros(4))
+    assert np.array_equal(loaded.obs_norm_stats.var, np.ones(4))
 
 
 def test_load_legacy_checkpoint_with_only_weights_and_norm_stats(tmp_path):
@@ -104,13 +112,13 @@ def test_load_legacy_checkpoint_with_only_weights_and_norm_stats(tmp_path):
         "norm_stats": {"obs_mean": torch.zeros(4), "obs_var": torch.ones(4)},
     }, str(path))
 
-    loaded, norm_stats = Policy.load(str(path), policy_id="dummy", obs_dimension=4, action_dimension=2)
+    loaded = Policy.load(str(path), policy_id="dummy", obs_dimension=4, action_dimension=2)
 
     assert isinstance(loaded, _DummyPolicy)
     assert torch.equal(loaded.dummy_param, original.dummy_param)
-    assert isinstance(norm_stats, NormalisationStats)
-    assert np.array_equal(norm_stats.mean, np.zeros(4))
-    assert np.array_equal(norm_stats.var, np.ones(4))
+    assert isinstance(loaded.obs_norm_stats, NormalisationStats)
+    assert np.array_equal(loaded.obs_norm_stats.mean, np.zeros(4))
+    assert np.array_equal(loaded.obs_norm_stats.var, np.ones(4))
 
 
 def test_load_dimension_override_takes_priority_over_checkpoint(tmp_path):
@@ -120,7 +128,7 @@ def test_load_dimension_override_takes_priority_over_checkpoint(tmp_path):
     path = tmp_path / "policy.pth"
     original.save(str(path))
 
-    loaded, _ = Policy.load(str(path), policy_id="dummy", obs_dimension=8, action_dimension=3)
+    loaded = Policy.load(str(path), policy_id="dummy", obs_dimension=8, action_dimension=3)
 
     assert loaded.input_size == 8
     assert loaded._number_actions == 3
@@ -133,7 +141,7 @@ def test_load_falls_back_to_checkpoint_dims_when_not_passed(tmp_path):
     path = tmp_path / "policy.pth"
     original.save(str(path))
 
-    loaded, _ = Policy.load(str(path), policy_id="dummy")
+    loaded = Policy.load(str(path), policy_id="dummy")
 
     assert loaded.input_size == 4
     assert loaded._number_actions == 2
