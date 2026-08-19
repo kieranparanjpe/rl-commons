@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Optional, cast
 
 import torch
 import gymnasium as gym
@@ -85,8 +85,8 @@ class MdpGym(Mdp):
         else:
             return int(self._env.action_space.shape[0])
 
-    def reset(self) -> torch.Tensor:
-        obs, _ = self._env.reset()
+    def reset(self, seed: Optional[int] = None) -> torch.Tensor:
+        obs, _ = self._env.reset(seed=seed)
         return torch.tensor(obs, dtype=torch.float32, device=self.device)
 
     def step(self, action: torch.Tensor) -> tuple[torch.Tensor, float, MdpTerminationState]:

@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Optional
+
 import torch
 
 from .mdp_termination_state import MdpTerminationState
@@ -36,8 +38,12 @@ class Mdp(ABC):
         pass
 
     @abstractmethod
-    def reset(self) -> torch.Tensor:
-        """Resets the MDP and returns the initial observation"""
+    def reset(self, seed: Optional[int] = None) -> torch.Tensor:
+        """Resets the MDP and returns the initial observation.
+
+        seed: if not None, reseeds the environment's RNG before reset -- use the same seed
+        across two Mdp instances of the same task to make their hidden reset-time randomness
+        (e.g. procedurally generated terrain, initial random impulses) identical."""
         pass
 
     @abstractmethod
